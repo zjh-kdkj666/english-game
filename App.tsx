@@ -58,6 +58,7 @@ const App: React.FC = () => {
   // Load history asynchronously on mount
   useEffect(() => {
     loadHistory();
+    checkApiKey();
     
     // Listen for PWA install event
     const handleBeforeInstallPrompt = (e: any) => {
@@ -68,6 +69,14 @@ const App: React.FC = () => {
 
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  const checkApiKey = () => {
+      // Check if API KEY is undefined or empty string
+      if (!process.env.API_KEY || process.env.API_KEY === '') {
+          // Only show error if we are not already showing a specific error
+          setError("⚠️ 未检测到 API Key。请在根目录创建 .env 文件并配置 API_KEY，或者使用演示模式。");
+      }
+  };
 
   const loadHistory = async () => {
       setIsLoadingHistory(true);
@@ -116,6 +125,7 @@ const App: React.FC = () => {
   };
 
   const handleDemo = () => {
+    setError(null);
     setLessonData(DEMO_LESSON);
     setInputMode('select');
     // Don't save demo to history to avoid clutter

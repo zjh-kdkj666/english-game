@@ -15,8 +15,8 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Settings State - Default to Pollinations for better stability/free tier support
-  const [selectedModel, setSelectedModel] = useState<ImageModelProvider>('POLLINATIONS_DEFAULT');
+  // Settings State - Default back to GEMINI as requested
+  const [selectedModel, setSelectedModel] = useState<ImageModelProvider>('GEMINI');
   const [showSettings, setShowSettings] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'prompt' | 'ratio' | 'ref'>('prompt');
   
@@ -64,10 +64,14 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
       .catch((err: any) => {
         setIsLoadingImage(false);
         const msg = err.toString();
+        console.error("Image Gen Error:", msg);
+        
         if (msg.includes("429") || msg.includes("quota") || msg.includes("exceeded")) {
             setErrorMsg("QUOTA_EXCEEDED");
+        } else if (msg.includes("API_KEY") || msg.includes("403") || msg.includes("key")) {
+            setErrorMsg("API_KEY_ERROR");
         } else {
-            setErrorMsg("生成失败，请重试");
+            setErrorMsg("GENERIC_ERROR");
         }
       });
   };
@@ -215,6 +219,32 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
     return 'text-2xl';
   };
 
+  const renderErrorState = () => {
+    let title = "图片生成失败";
+    let sub = "请检查网络或切换画师";
+    
+    if (errorMsg === "QUOTA_EXCEEDED") {
+        title = "配额已用完 (429)";
+        sub = "Gemini 免费版每分钟有限制，请稍等或切换到 Magic Art";
+    } else if (errorMsg === "API_KEY_ERROR") {
+        title = "API Key 无效";
+        sub = "请检查 Vercel 环境变量设置";
+    }
+
+    return (
+       <div className="flex flex-col items-center text-center p-6 space-y-4">
+          <AlertCircle size={48} className="text-red-400" />
+          <div>
+            <p className="text-slate-600 font-bold mb-1">{title}</p>
+            <p className="text-xs text-slate-400 max-w-[200px]">{sub}</p>
+          </div>
+          <button onClick={() => setShowSettings(true)} className="px-6 py-2 bg-purple-100 text-purple-700 rounded-full font-bold text-sm hover:bg-purple-200 transition">
+              打开设置重试
+          </button>
+       </div>
+    );
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full bg-slate-100 p-4 font-sans relative">
       
@@ -227,11 +257,11 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
                 onChange={(e) => setSelectedModel(e.target.value as ImageModelProvider)}
                 className="text-sm font-bold text-slate-700 bg-transparent border-none outline-none cursor-pointer max-w-[150px] sm:max-w-none truncate"
             >
-                <option value="POLLINATIONS_DEFAULT">Magic Art (推荐/免费)</option>
+                <option value="GEMINI">Google Gemini (默认)</option>
+                <option value="POLLINATIONS_DEFAULT">Magic Art (免费/稳定)</option>
                 <option value="POLLINATIONS_ANIME">Anime (动漫)</option>
                 <option value="POLLINATIONS_REALISTIC">Realistic (写实)</option>
                 <option value="POLLINATIONS_WATERCOLOR">Watercolor (水彩)</option>
-                <option value="GEMINI">Google Gemini (需Key)</option>
             </select>
           </div>
       </div>
@@ -380,16 +410,7 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
                    <p className="text-xs text-slate-400 mt-2 max-w-[200px] truncate">"{customPrompt}"</p>
                </div>
              ) : errorMsg ? (
-               <div className="flex flex-col items-center text-center p-6 space-y-4">
-                  <AlertCircle size={48} className="text-red-400" />
-                  <div>
-                    <p className="text-slate-600 font-bold mb-1">图片生成失败</p>
-                    <p className="text-xs text-slate-400">请检查网络或切换画师重试</p>
-                  </div>
-                  <button onClick={() => setShowSettings(true)} className="px-6 py-2 bg-purple-100 text-purple-700 rounded-full font-bold text-sm">
-                      打开设置重试
-                  </button>
-               </div>
+               renderErrorState()
              ) : imageUrl ? (
                <img src={imageUrl} alt="AI Generated Scene" className="w-full h-full object-contain bg-slate-100" />
              ) : (
