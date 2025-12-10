@@ -1,0 +1,8 @@
+{
+  "name": "Magic Learning Quest",
+  "description": "Transforms any English text or photo into an interactive RPG, Mystery, or Dubbing game for children.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
