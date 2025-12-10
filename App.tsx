@@ -551,17 +551,17 @@ export default defineConfig(({ mode }) => {
                                 <ExternalLink size={12} /> 点击申请 Google API Key
                             </a>
                             <ol className="text-xs text-amber-700 list-decimal pl-4 space-y-1">
-                                <li>申请后，在 Vercel 打开项目，点击 <b>Settings</b>。</li>
-                                <li>点击左侧 <b>Environment Variables</b>。</li>
-                                <li>Key: <b>API_KEY</b>, Value: 您的Key。</li>
-                                <li>点击 <b>Save</b>。</li>
+                                <li>申请后，在 Vercel 打开项目，点击 <span className="font-bold">Settings</span>。</li>
+                                <li>点击左侧 <span className="font-bold">Environment Variables</span>。</li>
+                                <li>Key: <span className="font-bold">API_KEY</span>, Value: 您的Key。</li>
+                                <li>点击 <span className="font-bold">Save</span>。</li>
                             </ol>
                         </div>
 
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                             <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Globe size={16}/> 第三步: 重新部署</h4>
                             <p className="text-xs text-slate-600">
-                                配置 Key 后，点击 Vercel 的 <b>Deployments</b> -> 找到最新记录 -> <b>Redeploy</b>。
+                                配置 Key 后，点击 Vercel 的 <span className="font-bold">Deployments</span> &rarr; 找到最新记录 &rarr; <span className="font-bold">Redeploy</span>。
                             </p>
                         </div>
 
@@ -626,14 +626,14 @@ export default defineConfig(({ mode }) => {
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                 <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🍎 iOS (Safari)</h4>
                                 <p className="text-xs text-slate-500">
-                                    点击底部 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Share size={10} /></span> 分享 &rarr; <b>添加到主屏幕</b>
+                                    点击底部 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Share size={10} /></span> 分享 &rarr; <span className="font-bold">添加到主屏幕</span>
                                 </p>
                             </div>
 
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                 <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🤖 Android (Chrome)</h4>
                                 <p className="text-xs text-slate-500">
-                                    点击右上角 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Menu size={10} /></span> 菜单 &rarr; <b>安装应用</b>
+                                    点击右上角 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Menu size={10} /></span> 菜单 &rarr; <span className="font-bold">安装应用</span>
                                 </p>
                             </div>
                         </div>
