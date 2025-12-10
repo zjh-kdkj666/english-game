@@ -6,12 +6,41 @@ import TowerGame from './components/TowerGame';
 import KitchenGame from './components/KitchenGame';
 import FlashcardGame from './components/FlashcardGame';
 // Rename File to FileIcon to avoid conflict with native DOM File object
-import { Wand2, Loader2, Castle, Puzzle, Image as ImageIcon, History, Trash2, ChevronRight, X, Plus, Download, Share, Menu, FileText, FileSpreadsheet, File as FileIcon, Presentation, Smartphone, Copy, Check, Link, AlertTriangle, Globe, Github, CloudLightning, Package, FileCode } from 'lucide-react';
+import { Wand2, Loader2, Castle, Puzzle, Image as ImageIcon, History, Trash2, ChevronRight, X, Plus, Download, Share, Menu, FileText, FileSpreadsheet, File as FileIcon, Presentation, Smartphone, Copy, Check, Link, AlertTriangle, Globe, Github, CloudLightning, Package, FileCode, KeyRound, Gamepad2, ExternalLink } from 'lucide-react';
 
 // Declare globals for the CDN libraries
 declare const XLSX: any;
 declare const JSZip: any;
 declare const mammoth: any;
+
+// Hardcoded Demo Data for users without API Key
+const DEMO_LESSON: LessonData = {
+    id: 'demo-space-adventure',
+    timestamp: Date.now(),
+    topic: 'Space Explorer (演示课程)',
+    towerWords: [
+      { id: 'w1', english: 'Astronaut', chinese: '宇航员', options: ['Astronaut', 'Driver', 'Chef', 'Pilot'].sort(() => 0.5 - Math.random()) },
+      { id: 'w2', english: 'Rocket', chinese: '火箭', options: ['Rocket', 'Car', 'Bike', 'Boat'].sort(() => 0.5 - Math.random()) },
+      { id: 'w3', english: 'Planet', chinese: '行星', options: ['Planet', 'Star', 'Moon', 'Sun'].sort(() => 0.5 - Math.random()) },
+      { id: 'w4', english: 'Galaxy', chinese: '银河', options: ['Galaxy', 'World', 'City', 'Town'].sort(() => 0.5 - Math.random()) },
+      { id: 'w5', english: 'Telescope', chinese: '望远镜', options: ['Telescope', 'Microscope', 'Glasses', 'Mirror'].sort(() => 0.5 - Math.random()) }
+    ],
+    matchingPairs: [
+      { id: 'm1', english: 'The sun is a star.', chinese: '太阳是一颗恒星。' },
+      { id: 'm2', english: 'The moon orbits the earth.', chinese: '月亮绕着地球转。' },
+      { id: 'm3', english: 'Gravity pulls us down.', chinese: '重力把我们往下拉。' },
+      { id: 'm4', english: 'Mars is the red planet.', chinese: '火星是红色的星球。' },
+      { id: 'm5', english: 'Stars shine at night.', chinese: '星星在夜晚闪耀。' },
+      { id: 'm6', english: 'Earth is our home.', chinese: '地球是我们的家。' }
+    ],
+    // Pre-filled images using Pollinations to avoid hitting API limits in demo
+    flashcards: [
+      { id: 'f1', english: 'Astronaut', chinese: '宇航员', visualPrompt: 'Cute astronaut floating in space with stars', generatedImage: 'https://image.pollinations.ai/prompt/Cute%20astronaut%20floating%20in%20space%20with%20stars?nologo=true&width=768&height=1024&model=flux' },
+      { id: 'f2', english: 'Rocket', chinese: '火箭', visualPrompt: 'Red rocket ship blasting off into space', generatedImage: 'https://image.pollinations.ai/prompt/Red%20rocket%20ship%20blasting%20off%20into%20space?nologo=true&width=768&height=1024&model=flux' },
+      { id: 'f3', english: 'Earth', chinese: '地球', visualPrompt: 'Planet earth seen from space, blue and green', generatedImage: 'https://image.pollinations.ai/prompt/Planet%20earth%20seen%20from%20space,%20blue%20and%20green?nologo=true&width=768&height=1024&model=flux' },
+      { id: 'f4', english: 'Alien', chinese: '外星人', visualPrompt: 'Friendly green alien waving hand', generatedImage: 'https://image.pollinations.ai/prompt/Friendly%20green%20alien%20waving%20hand?nologo=true&width=768&height=1024&model=flux' }
+    ]
+  };
 
 const App: React.FC = () => {
   const [inputMode, setInputMode] = useState<'start' | 'loading' | 'select' | 'playing'>('start');
@@ -71,11 +100,27 @@ const App: React.FC = () => {
       setInputMode('select');
       setInputText('');
       setAttachments([]);
-    } catch (err) {
-      console.error(err);
-      setError("哎呀！魔法棒失效了。请尝试更简单的内容或确保文件格式正确。");
+    } catch (err: any) {
+      console.error("Generation failed:", err);
+      let msg = "哎呀！魔法棒失效了。请尝试更简单的内容或确保文件格式正确。";
+      
+      // Check for common deployment errors
+      const errStr = err?.toString() || "";
+      if (errStr.includes("process is not defined") || errStr.includes("API key")) {
+          msg = "配置错误：API Key 未生效。请检查 Vercel 的环境变量设置 (API_KEY)。";
+      } else if (errStr.includes("429") || errStr.includes("quota")) {
+          msg = "服务太繁忙了 (429)，请稍后再试。";
+      }
+
+      setError(msg);
       setInputMode('start');
     }
+  };
+
+  const handleDemo = () => {
+    setLessonData(DEMO_LESSON);
+    setInputMode('select');
+    // Don't save demo to history to avoid clutter
   };
 
   const handleInstallApp = async () => {
@@ -131,12 +176,19 @@ const App: React.FC = () => {
           }
       }, null, 2));
 
-      // 2. vite.config.js
-      zip.file("vite.config.js", `import { defineConfig } from 'vite';
+      // 2. vite.config.js - CRITICAL FIX V6: INJECT ENV VARS
+      // This ensures process.env.API_KEY is replaced by the actual Vercel environment variable during build
+      zip.file("vite.config.js", `import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    plugins: [react()],
+    define: {
+      'process.env.API_KEY': JSON.stringify(process.env.API_KEY || env.API_KEY)
+    }
+  };
 });`);
 
       // 3. vercel.json - NEW CRITICAL FILE
@@ -212,7 +264,7 @@ export default defineConfig({
       const url = window.URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = "magic-english-deploy-v5-fix.zip"; // Renamed
+      a.download = "magic-english-deploy-v6-env.zip"; // Renamed
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -473,7 +525,7 @@ export default defineConfig({
                         <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100">
                             <h4 className="font-bold text-purple-900 mb-2 flex items-center gap-2"><FileCode size={16}/> 第一步: 获取代码</h4>
                             <p className="text-xs text-slate-600 mb-3">
-                                点击下方按钮，自动打包本项目的所有源代码。
+                                点击下方按钮，下载最新的修复版代码 (V6)。
                             </p>
                             <button 
                                 onClick={downloadSourceCode}
@@ -481,27 +533,35 @@ export default defineConfig({
                                 className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-70"
                             >
                                 {isZipping ? <Loader2 className="animate-spin" size={16}/> : <Package size={16}/>}
-                                {isZipping ? "正在打包..." : "下载源代码 (V5 修复依赖版)"}
+                                {isZipping ? "正在打包..." : "下载源代码 (V6 终极配置版)"}
                             </button>
-                            <p className="text-[10px] text-green-600 font-bold mt-2 text-center bg-green-50 p-1 rounded">
-                                *已包含 vercel.json 配置文件 (解决部署失败)
-                            </p>
                         </div>
 
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Globe size={16}/> 第二步: 发布 (Vercel)</h4>
-                            <ol className="text-xs text-slate-600 list-decimal pl-4 space-y-1">
-                                <li>访问 <b>Vercel.com</b> 并登录。</li>
-                                <li>点击 <b>Add New Project</b>。</li>
-                                <li>上传刚才下载的 <b>magic-english-deploy-v5-fix.zip</b>。</li>
-                                <li>点击 <b>Deploy</b>，等待 1 分钟。</li>
+                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                            <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2"><KeyRound size={16}/> 第二步: 配置免费 Key</h4>
+                            <p className="text-xs text-amber-700 mb-2">
+                                您可以免费申请 Gemini API Key（不需要信用卡）。
+                            </p>
+                            <a 
+                                href="https://aistudio.google.com/app/apikey" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block w-full py-2 bg-white border border-amber-300 rounded text-amber-800 text-xs font-bold text-center hover:bg-amber-50 mb-3 flex items-center justify-center gap-1"
+                            >
+                                <ExternalLink size={12} /> 点击申请 Google API Key
+                            </a>
+                            <ol className="text-xs text-amber-700 list-decimal pl-4 space-y-1">
+                                <li>申请后，在 Vercel 打开项目，点击 <b>Settings</b>。</li>
+                                <li>点击左侧 <b>Environment Variables</b>。</li>
+                                <li>Key: <b>API_KEY</b>, Value: 您的Key。</li>
+                                <li>点击 <b>Save</b>。</li>
                             </ol>
                         </div>
 
-                        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                            <h4 className="font-bold text-green-800 mb-1">🎉 第三步: 手机访问</h4>
-                            <p className="text-xs text-green-700">
-                                Vercel 会生成一个链接 (例如 app.vercel.app)。用手机打开它，就能正常安装了！
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Globe size={16}/> 第三步: 重新部署</h4>
+                            <p className="text-xs text-slate-600">
+                                配置 Key 后，点击 Vercel 的 <b>Deployments</b> -> 找到最新记录 -> <b>Redeploy</b>。
                             </p>
                         </div>
 
@@ -681,14 +741,24 @@ export default defineConfig({
                 </label>
               </div>
 
-              <button
-                  disabled={!inputText.trim() && attachments.length === 0}
-                  onClick={handleGenerate}
-                  className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-lg rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Wand2 size={20} />
-                  开始生成魔法游戏
-                </button>
+              <div className="space-y-3">
+                  <button
+                      disabled={!inputText.trim() && attachments.length === 0}
+                      onClick={handleGenerate}
+                      className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-lg rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Wand2 size={20} />
+                      开始生成魔法游戏
+                    </button>
+
+                    <button
+                      onClick={handleDemo}
+                      className="w-full py-3 bg-white text-green-600 hover:bg-green-50 border border-green-200 font-bold text-lg rounded-xl shadow-sm transition transform active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Gamepad2 size={20} />
+                      试玩演示 (无需Key)
+                    </button>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -745,7 +815,7 @@ export default defineConfig({
                     onClick={() => { setShowInstallModal(true); setShowDeployHelp(true); }}
                     className="text-slate-400 text-xs font-bold hover:text-purple-500 transition flex items-center justify-center gap-1 mx-auto underline decoration-dotted"
                  >
-                    <CloudLightning size={12} /> 想要自己部署? 获取源代码 & 教程
+                    <CloudLightning size={12} /> 想要自己部署? 获取源码 & 教程
                  </button>
             </div>
             
