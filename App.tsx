@@ -107,7 +107,7 @@ const App: React.FC = () => {
       setIsZipping(true);
       const zip = new JSZip();
       
-      // 1. package.json - CRITICAL FIX V4: REMOVE TSC FROM BUILD
+      // 1. package.json - CRITICAL FIX V5: USE LATEST VERSION FOR GENAI
       zip.file("package.json", JSON.stringify({
           "name": "magic-learning-quest",
           "private": true,
@@ -119,7 +119,7 @@ const App: React.FC = () => {
               "preview": "vite preview"
           },
           "dependencies": {
-              "@google/genai": "^0.1.2",
+              "@google/genai": "latest",
               "lucide-react": "^0.344.0",
               "react": "^18.3.1",
               "react-dom": "^18.3.1",
@@ -212,7 +212,7 @@ export default defineConfig({
       const url = window.URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = "magic-english-deploy-v4-fix.zip"; // Renamed
+      a.download = "magic-english-deploy-v5-fix.zip"; // Renamed
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -481,7 +481,7 @@ export default defineConfig({
                                 className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-70"
                             >
                                 {isZipping ? <Loader2 className="animate-spin" size={16}/> : <Package size={16}/>}
-                                {isZipping ? "正在打包..." : "下载源代码 (V4 绝对修复版)"}
+                                {isZipping ? "正在打包..." : "下载源代码 (V5 修复依赖版)"}
                             </button>
                             <p className="text-[10px] text-green-600 font-bold mt-2 text-center bg-green-50 p-1 rounded">
                                 *已包含 vercel.json 配置文件 (解决部署失败)
@@ -493,7 +493,7 @@ export default defineConfig({
                             <ol className="text-xs text-slate-600 list-decimal pl-4 space-y-1">
                                 <li>访问 <b>Vercel.com</b> 并登录。</li>
                                 <li>点击 <b>Add New Project</b>。</li>
-                                <li>上传刚才下载的 <b>magic-english-deploy-v4-fix.zip</b>。</li>
+                                <li>上传刚才下载的 <b>magic-english-deploy-v5-fix.zip</b>。</li>
                                 <li>点击 <b>Deploy</b>，等待 1 分钟。</li>
                             </ol>
                         </div>
