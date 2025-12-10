@@ -6,7 +6,7 @@ import TowerGame from './components/TowerGame';
 import KitchenGame from './components/KitchenGame';
 import FlashcardGame from './components/FlashcardGame';
 // Rename File to FileIcon to avoid conflict with native DOM File object
-import { Wand2, Loader2, Castle, Puzzle, Image as ImageIcon, History, Trash2, ChevronRight, X, Plus, Download, Share, Menu, FileText, FileSpreadsheet, File as FileIcon, Presentation, Smartphone, Copy, Check, Link, AlertTriangle, Globe, Github, CloudLightning, Package, FileCode, KeyRound, Gamepad2, ExternalLink } from 'lucide-react';
+import { Wand2, Loader2, Castle, Puzzle, Image as ImageIcon, History, Trash2, ChevronRight, X, Plus, Download, Share, Menu, FileText, FileSpreadsheet, File as FileIcon, Presentation, Smartphone, Copy, Check, Link, AlertTriangle, Globe, Github, Package, FileCode, KeyRound, Gamepad2, ExternalLink } from 'lucide-react';
 
 // Declare globals for the CDN libraries
 declare const XLSX: any;
@@ -52,10 +52,8 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<LessonData[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [showInstallModal, setShowInstallModal] = useState(false);
-  const [showDeployHelp, setShowDeployHelp] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [isZipping, setIsZipping] = useState(false);
 
   // Load history asynchronously on mount
   useEffect(() => {
@@ -131,7 +129,6 @@ const App: React.FC = () => {
               setDeferredPrompt(null);
           }
       } else {
-          setShowDeployHelp(false); // Reset to default view
           setShowInstallModal(true);
       }
   };
@@ -140,142 +137,6 @@ const App: React.FC = () => {
       navigator.clipboard.writeText(window.location.href);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  const downloadSourceCode = async () => {
-    try {
-      if (typeof JSZip === 'undefined') {
-        alert("正在加载压缩库，请稍后再试...");
-        return;
-      }
-
-      setIsZipping(true);
-      const zip = new JSZip();
-      
-      // 1. package.json - CRITICAL FIX V5: USE LATEST VERSION FOR GENAI
-      zip.file("package.json", JSON.stringify({
-          "name": "magic-learning-quest",
-          "private": true,
-          "version": "1.0.0",
-          "type": "module",
-          "scripts": {
-              "dev": "vite",
-              "build": "vite build", // Removed 'tsc &&' to skip strict type check on deploy
-              "preview": "vite preview"
-          },
-          "dependencies": {
-              "@google/genai": "latest",
-              "lucide-react": "^0.344.0",
-              "react": "^18.3.1",
-              "react-dom": "^18.3.1",
-              "@types/react": "^18.3.3",
-              "@types/react-dom": "^18.3.0",
-              "@vitejs/plugin-react": "^4.2.1",
-              "typescript": "^5.2.2",
-              "vite": "^5.1.4"
-          }
-      }, null, 2));
-
-      // 2. vite.config.js - CRITICAL FIX V6: INJECT ENV VARS
-      // This ensures process.env.API_KEY is replaced by the actual Vercel environment variable during build
-      zip.file("vite.config.js", `import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  return {
-    plugins: [react()],
-    define: {
-      'process.env.API_KEY': JSON.stringify(process.env.API_KEY || env.API_KEY)
-    }
-  };
-});`);
-
-      // 3. vercel.json - NEW CRITICAL FILE
-      zip.file("vercel.json", JSON.stringify({
-        "buildCommand": "vite build",
-        "outputDirectory": "dist",
-        "framework": "vite",
-        "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-      }, null, 2));
-
-      // 4. tsconfig.json (Basic config for build)
-      zip.file("tsconfig.json", JSON.stringify({
-        "compilerOptions": {
-            "target": "ES2020",
-            "useDefineForClassFields": true,
-            "lib": ["ES2020", "DOM", "DOM.Iterable"],
-            "module": "ESNext",
-            "skipLibCheck": true,
-            "moduleResolution": "bundler",
-            "allowImportingTsExtensions": true,
-            "resolveJsonModule": true,
-            "isolatedModules": true,
-            "noEmit": true,
-            "jsx": "react-jsx",
-            "strict": false, // Relaxed strict mode
-            "noUnusedLocals": false,
-            "noUnusedParameters": false,
-            "noFallthroughCasesInSwitch": true
-        },
-        "include": ["**/*.ts", "**/*.tsx"]
-      }, null, 2));
-
-      // 5. Source Files
-      const files = [
-        'index.html',
-        'index.tsx',
-        'App.tsx',
-        'types.ts',
-        'metadata.json',
-        'manifest.json',
-        'services/geminiService.ts',
-        'services/storageService.ts',
-        'components/TowerGame.tsx',
-        'components/KitchenGame.tsx',
-        'components/FlashcardGame.tsx',
-        'components/RPGGame.tsx',
-        'components/DetectiveGame.tsx',
-        'components/DirectorGame.tsx',
-        'components/SlicerGame.tsx'
-      ];
-
-      let count = 0;
-      for (const file of files) {
-        try {
-            const response = await fetch(file);
-            if (response.ok) {
-                const text = await response.text();
-                zip.file(file, text);
-                count++;
-            }
-        } catch (e) {
-            console.warn(`Could not include ${file} in zip`, e);
-        }
-      }
-      
-      if (count < 3) {
-          alert("无法自动获取源代码文件。请尝试手动导出。");
-          setIsZipping(false);
-          return;
-      }
-
-      const content = await zip.generateAsync({ type: "blob" });
-      const url = window.URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "magic-english-deploy-v6-env.zip"; // Renamed
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      setIsZipping(false);
-
-    } catch (e) {
-      console.error("Zip failed", e);
-      alert("打包下载失败，请尝试手动导出。");
-      setIsZipping(false);
-    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -509,138 +370,73 @@ export default defineConfig(({ mode }) => {
                 
                 <div className="text-center mb-6">
                     <div className="bg-purple-100 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4">
-                        {showDeployHelp ? <CloudLightning className="text-purple-600 w-8 h-8" /> : <Smartphone className="text-purple-600 w-8 h-8" />}
+                        <Smartphone className="text-purple-600 w-8 h-8" />
                     </div>
                     <h3 className="text-xl font-black text-slate-800">
-                        {showDeployHelp ? "如何发布上线?" : "安装APP到手机"}
+                        安装APP到手机
                     </h3>
                 </div>
 
-                {showDeployHelp ? (
-                    <div className="space-y-4 animate-fade-in">
-                        <div className="text-sm text-slate-600 leading-relaxed mb-4">
-                            要让手机能访问，您需要将代码<b>发布到公网</b>。
-                        </div>
-                        
-                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100">
-                            <h4 className="font-bold text-purple-900 mb-2 flex items-center gap-2"><FileCode size={16}/> 第一步: 获取代码</h4>
-                            <p className="text-xs text-slate-600 mb-3">
-                                点击下方按钮，下载最新的修复版代码 (V6)。
+                <div className="space-y-4">
+                    {isPreviewEnv && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
+                            <h4 className="text-amber-800 font-bold text-sm flex items-center gap-2 mb-1">
+                                <AlertTriangle size={14} /> 链接不可用? (404)
+                            </h4>
+                            <p className="text-xs text-amber-700 leading-relaxed mb-2">
+                                这是因为您正在使用<b>预览链接</b>。手机无法直接访问此私有地址。
                             </p>
+                        </div>
+                    )}
+
+                    <div className="bg-slate-100 p-4 rounded-xl border border-slate-200">
+                        <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                            <Link size={12}/> 复制当前链接
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-white p-2 rounded-lg text-xs text-slate-600 truncate font-mono border border-slate-200">
+                                {window.location.href}
+                            </div>
                             <button 
-                                onClick={downloadSourceCode}
-                                disabled={isZipping}
-                                className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                                onClick={handleCopyLink}
+                                className={`p-2 rounded-lg font-bold text-xs flex items-center gap-1 transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                             >
-                                {isZipping ? <Loader2 className="animate-spin" size={16}/> : <Package size={16}/>}
-                                {isZipping ? "正在打包..." : "下载源代码 (V6 终极配置版)"}
+                                {isCopied ? <Check size={14}/> : <Copy size={14}/>}
+                                {isCopied ? "已复制" : "复制"}
                             </button>
                         </div>
+                    </div>
 
-                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                            <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2"><KeyRound size={16}/> 第二步: 配置免费 Key</h4>
-                            <p className="text-xs text-amber-700 mb-2">
-                                您可以免费申请 Gemini API Key（不需要信用卡）。
-                            </p>
-                            <a 
-                                href="https://aistudio.google.com/app/apikey" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block w-full py-2 bg-white border border-amber-300 rounded text-amber-800 text-xs font-bold text-center hover:bg-amber-50 mb-3 flex items-center justify-center gap-1"
+                    {deferredPrompt && (
+                        <div className="mb-2">
+                            <button 
+                                onClick={handleInstallApp}
+                                className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition animate-bounce-short flex items-center justify-center gap-2"
                             >
-                                <ExternalLink size={12} /> 点击申请 Google API Key
-                            </a>
-                            <ol className="text-xs text-amber-700 list-decimal pl-4 space-y-1">
-                                <li>申请后，在 Vercel 打开项目，点击 <span className="font-bold">Settings</span>。</li>
-                                <li>点击左侧 <span className="font-bold">Environment Variables</span>。</li>
-                                <li>Key: <span className="font-bold">API_KEY</span>, Value: 您的Key。</li>
-                                <li>点击 <span className="font-bold">Save</span>。</li>
-                            </ol>
+                                <Download size={20}/> 立即下载/安装
+                            </button>
                         </div>
+                    )}
 
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Globe size={16}/> 第三步: 重新部署</h4>
-                            <p className="text-xs text-slate-600">
-                                配置 Key 后，点击 Vercel 的 <span className="font-bold">Deployments</span> &rarr; 找到最新记录 &rarr; <span className="font-bold">Redeploy</span>。
+                    <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase">手动安装步骤</h4>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🍎 iOS (Safari)</h4>
+                            <p className="text-xs text-slate-500">
+                                点击底部 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Share size={10} /></span> 分享 &rarr; <b>添加到主屏幕</b>
                             </p>
                         </div>
 
-                        <button 
-                            onClick={() => setShowDeployHelp(false)}
-                            className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition"
-                        >
-                            返回安装指引
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {isPreviewEnv && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
-                                <h4 className="text-amber-800 font-bold text-sm flex items-center gap-2 mb-1">
-                                    <AlertTriangle size={14} /> 链接不可用? (404)
-                                </h4>
-                                <p className="text-xs text-amber-700 leading-relaxed mb-2">
-                                    这是因为您正在使用<b>预览链接</b>。手机无法直接访问此私有地址。
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="bg-slate-100 p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
-                                <Link size={12}/> 复制当前链接
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🤖 Android (Chrome)</h4>
+                            <p className="text-xs text-slate-500">
+                                点击右上角 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Menu size={10} /></span> 菜单 &rarr; <b>安装应用</b>
                             </p>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-white p-2 rounded-lg text-xs text-slate-600 truncate font-mono border border-slate-200">
-                                    {window.location.href}
-                                </div>
-                                <button 
-                                    onClick={handleCopyLink}
-                                    className={`p-2 rounded-lg font-bold text-xs flex items-center gap-1 transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-                                >
-                                    {isCopied ? <Check size={14}/> : <Copy size={14}/>}
-                                    {isCopied ? "已复制" : "复制"}
-                                </button>
-                            </div>
                         </div>
-                        
-                        <button 
-                            onClick={() => setShowDeployHelp(true)}
-                            className="w-full py-3 bg-slate-50 text-purple-600 rounded-xl font-bold hover:bg-purple-50 transition border border-purple-100 text-sm flex items-center justify-center gap-2"
-                        >
-                            <CloudLightning size={16}/> 获取源码 & 部署教程
-                        </button>
-
-                        {deferredPrompt && (
-                            <div className="mb-2">
-                                <button 
-                                    onClick={handleInstallApp}
-                                    className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition animate-bounce-short flex items-center justify-center gap-2"
-                                >
-                                    <Download size={20}/> 立即下载/安装
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                             <h4 className="text-xs font-bold text-slate-400 uppercase">手动安装步骤</h4>
-                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🍎 iOS (Safari)</h4>
-                                <p className="text-xs text-slate-500">
-                                    点击底部 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Share size={10} /></span> 分享 &rarr; <span className="font-bold">添加到主屏幕</span>
-                                </p>
-                            </div>
-
-                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">🤖 Android (Chrome)</h4>
-                                <p className="text-xs text-slate-500">
-                                    点击右上角 <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-200 rounded align-middle"><Menu size={10} /></span> 菜单 &rarr; <span className="font-bold">安装应用</span>
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <button onClick={() => setShowInstallModal(false)} className="w-full mt-2 py-3 bg-white text-slate-400 rounded-xl font-bold hover:bg-slate-50 transition border border-slate-200 text-sm">关闭</button>
                     </div>
-                )}
+                    
+                    <button onClick={() => setShowInstallModal(false)} className="w-full mt-2 py-3 bg-white text-slate-400 rounded-xl font-bold hover:bg-slate-50 transition border border-slate-200 text-sm">关闭</button>
+                </div>
             </div>
         </div>
     );
@@ -807,16 +603,6 @@ export default defineConfig(({ mode }) => {
                         暂无历史记录，快去生成第一个游戏吧！
                     </div>
                 )}
-            </div>
-
-            {/* Direct Deployment Link for User Visibility */}
-            <div className="mt-8 text-center pb-8">
-                 <button 
-                    onClick={() => { setShowInstallModal(true); setShowDeployHelp(true); }}
-                    className="text-slate-400 text-xs font-bold hover:text-purple-500 transition flex items-center justify-center gap-1 mx-auto underline decoration-dotted"
-                 >
-                    <CloudLightning size={12} /> 想要自己部署? 获取源码 & 教程
-                 </button>
             </div>
             
             {error && (

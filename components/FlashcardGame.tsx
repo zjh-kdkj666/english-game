@@ -15,8 +15,8 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Settings State - Default to GEMINI per user request
-  const [selectedModel, setSelectedModel] = useState<ImageModelProvider>('GEMINI');
+  // Settings State - Default to Pollinations for better stability/free tier support
+  const [selectedModel, setSelectedModel] = useState<ImageModelProvider>('POLLINATIONS_DEFAULT');
   const [showSettings, setShowSettings] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'prompt' | 'ratio' | 'ref'>('prompt');
   
@@ -227,12 +227,11 @@ const FlashcardGame: React.FC<Props> = ({ cards, onExit, onUpdateCardImage }) =>
                 onChange={(e) => setSelectedModel(e.target.value as ImageModelProvider)}
                 className="text-sm font-bold text-slate-700 bg-transparent border-none outline-none cursor-pointer max-w-[150px] sm:max-w-none truncate"
             >
-                <option value="GEMINI">Google Gemini (默认)</option>
-                <option value="POLLINATIONS_DEFAULT">Magic Art (绘本/省空间)</option>
+                <option value="POLLINATIONS_DEFAULT">Magic Art (推荐/免费)</option>
                 <option value="POLLINATIONS_ANIME">Anime (动漫)</option>
                 <option value="POLLINATIONS_REALISTIC">Realistic (写实)</option>
                 <option value="POLLINATIONS_WATERCOLOR">Watercolor (水彩)</option>
-                <option value="POLLINATIONS_TURBO">Lightning (快画)</option>
+                <option value="GEMINI">Google Gemini (需Key)</option>
             </select>
           </div>
       </div>
